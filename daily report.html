@@ -1,0 +1,248 @@
+<title>Daily report</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --card:#ffffff; --text:#1c2422; --muted:#6b7a76;
+    --line:#e2e7e4; --accent:#0e7a6d; --accent-text:#ffffff;
+    --danger:#b3453e; --chip:#eef3f1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141917; --card:#1d2422; --text:#e8edeb; --muted:#8fa09b;
+      --line:#2b3431; --accent:#2fa392; --accent-text:#0b1210;
+      --danger:#e07a72; --chip:#242e2b;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141917; --card:#1d2422; --text:#e8edeb; --muted:#8fa09b;
+    --line:#2b3431; --accent:#2fa392; --accent-text:#0b1210;
+    --danger:#e07a72; --chip:#242e2b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Noto Sans Thai","Leelawadee UI","Segoe UI",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:16px 12px 80px}
+  #sections{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; align-items:start}
+  .toolbar, #add-section, #report{max-width:520px; margin-left:auto; margin-right:auto}
+  .toolbar{margin-bottom:14px} #add-section{display:block; margin-top:14px} #report{margin-top:12px}
+  header{display:flex; align-items:baseline; gap:10px; padding:4px 4px 12px}
+  h1{font-size:22px; margin:0; font-weight:700}
+  .date{color:var(--muted); font-size:14px}
+  .total{margin-left:auto; font-size:14px; color:var(--muted)}
+  .total b{color:var(--text); font-variant-numeric:tabular-nums; font-size:18px}
+
+  .section{background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  .sec-head{display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line)}
+  .sec-head input{
+    flex:1; min-width:0; border:none; background:transparent; color:var(--text);
+    font:inherit; font-weight:700; font-size:17px; padding:2px 0; outline:none;
+  }
+  .sec-total{color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums}
+
+  .row{display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line)}
+  .row:last-of-type{border-bottom:none}
+  .row input{
+    flex:1; min-width:0; border:none; background:transparent; color:var(--text);
+    font:inherit; font-size:15px; padding:6px 2px; outline:none;
+  }
+  .row input:focus{border-bottom:1px dashed var(--muted)}
+  .count{
+    min-width:34px; text-align:center; font-size:18px; font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .count.zero{color:var(--muted); font-weight:400}
+  button{font:inherit; border:none; cursor:pointer; border-radius:10px; -webkit-user-select:none; user-select:none}
+  .btn-inc{
+    background:var(--accent); color:var(--accent-text);
+    width:52px; height:44px; font-size:24px; font-weight:700;
+  }
+  .btn-dec{
+    background:var(--chip); color:var(--text);
+    width:38px; height:44px; font-size:20px;
+  }
+  .btn-inc:active{filter:brightness(1.15)}
+  .btn-dec:active{filter:brightness(0.9)}
+  .btn-del{
+    background:transparent; color:var(--muted); width:26px; height:44px; font-size:15px; padding:0;
+  }
+  .add-row{
+    display:block; width:100%; text-align:left; padding:10px 14px;
+    background:transparent; color:var(--accent); font-size:14px; border-radius:0;
+  }
+  .toolbar{display:flex; gap:8px; margin:4px 0 14px}
+  .toolbar button{
+    flex:1; padding:12px; font-size:15px; font-weight:600;
+    background:var(--card); border:1px solid var(--line); color:var(--text);
+  }
+  .toolbar .primary{background:var(--accent); color:var(--accent-text); border-color:var(--accent)}
+  .toolbar .danger{color:var(--danger)}
+  #add-section{width:100%; padding:12px; background:transparent; border:1px dashed var(--line); color:var(--muted); font-size:14px}
+  #report{
+    width:100%; margin-top:12px; min-height:180px; padding:12px;
+    background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:12px;
+    font:inherit; font-size:14px; display:none;
+  }
+  #toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--text); color:var(--bg); padding:8px 18px; border-radius:20px;
+    font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Daily report</h1>
+    <span class="date" id="date"></span>
+    <span class="total">รวม <b id="grand">0</b></span>
+  </header>
+
+  <div class="toolbar">
+    <button class="primary" id="copy">ดึงยอดเป็นข้อความ</button>
+    <button id="share" style="display:none">แชร์</button>
+    <button class="danger" id="reset">รีเซ็ตตัวเลข</button>
+  </div>
+
+  <div id="sections"></div>
+  <button id="add-section">+ เพิ่มร้าน / หมวด</button>
+  <textarea id="report" readonly></textarea>
+</div>
+<div id="toast"></div>
+
+<script>
+const KEY = 'daily report-v1';
+const DEFAULT_TASKS = ['ต่ออายุลูกบ้าน','เติมการ์ด','เชิญลูกบ้านเข้าใหม่','เตะลูกบ้านออก','หัวแฟม','แก้ปัญหาลูกค้า'];
+let state = load();
+
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.sections) return s; }catch(e){}
+  return { sections: ['Dofin','Shark','Namfon'].map(n => ({
+    name:n, counters: DEFAULT_TASKS.map(t => ({name:t, count:0}))
+  }))};
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+function thaiDate(){
+  const d = new Date();
+  return d.getDate() + '/' + (d.getMonth()+1) + '/' + String((d.getFullYear()+543) % 100);
+}
+
+function render(){
+  const root = document.getElementById('sections');
+  root.innerHTML = '';
+  let grand = 0;
+  state.sections.forEach((sec, si) => {
+    const secTotal = sec.counters.reduce((a,c)=>a+c.count,0);
+    grand += secTotal;
+    const div = document.createElement('div');
+    div.className = 'section';
+
+    const head = document.createElement('div');
+    head.className = 'sec-head';
+    const nameIn = mkInput(sec.name, v => { sec.name = v; save(); });
+    const tot = document.createElement('span');
+    tot.className = 'sec-total';
+    tot.textContent = secTotal;
+    const delSec = mkBtn('btn-del','✕', () => {
+      if(sec.counters.some(c=>c.count>0) && !delSec.dataset.armed){
+        delSec.dataset.armed='1'; delSec.textContent='ลบ?'; delSec.style.color='var(--danger)'; return;
+      }
+      state.sections.splice(si,1); save(); render();
+    });
+    head.append(nameIn, tot, delSec);
+    div.append(head);
+
+    sec.counters.forEach((c, ci) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const del = mkBtn('btn-del','✕', () => { sec.counters.splice(ci,1); save(); render(); });
+      const inp = mkInput(c.name, v => { c.name = v; save(); });
+      const cnt = document.createElement('span');
+      cnt.className = 'count' + (c.count===0?' zero':'');
+      cnt.textContent = c.count;
+      const dec = mkBtn('btn-dec','−', () => { if(c.count>0){ c.count--; save(); render(); } });
+      const inc = mkBtn('btn-inc','+', () => { c.count++; save(); render(); });
+      row.append(del, inp, cnt, dec, inc);
+      div.append(row);
+    });
+
+    const add = mkBtn('add-row','+ เพิ่มรายการ', () => {
+      sec.counters.push({name:'รายการใหม่', count:0}); save(); render();
+      const inputs = div.querySelectorAll('.row input');
+      const last = inputs[inputs.length-1];
+      if(last){ last.focus(); last.select(); }
+    });
+    div.append(add);
+    root.append(div);
+  });
+  document.getElementById('grand').textContent = grand;
+}
+
+function mkInput(val, onChange){
+  const i = document.createElement('input');
+  i.value = val;
+  i.addEventListener('input', () => onChange(i.value));
+  return i;
+}
+function mkBtn(cls, label, fn){
+  const b = document.createElement('button');
+  b.className = cls; b.textContent = label;
+  b.addEventListener('click', fn);
+  return b;
+}
+
+document.getElementById('add-section').addEventListener('click', () => {
+  state.sections.push({name:'ร้านใหม่', counters:[]}); save(); render();
+});
+
+document.getElementById('reset').addEventListener('click', function(){
+  if(!this.dataset.armed){ this.dataset.armed='1'; this.textContent='แน่ใจ? กดอีกครั้ง'; return; }
+  delete this.dataset.armed; this.textContent='รีเซ็ตตัวเลข';
+  state.sections.forEach(s => s.counters.forEach(c => c.count = 0));
+  save(); render();
+  document.getElementById('report').style.display='none';
+  toast('รีเซ็ตแล้ว');
+});
+
+function buildReport(){
+  let out = 'Report ' + thaiDate() + '\n';
+  state.sections.forEach(sec => {
+    const active = sec.counters.filter(c => c.count > 0);
+    if(!active.length) return;
+    out += '\n' + sec.name + '\n';
+    active.forEach(c => { out += '- ' + c.name + ' ' + c.count + '\n'; });
+  });
+  return out;
+}
+
+document.getElementById('copy').addEventListener('click', () => {
+  const out = buildReport();
+  const ta = document.getElementById('report');
+  ta.value = out;
+  ta.style.display = 'block';
+  ta.scrollIntoView({behavior:'smooth', block:'nearest'});
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(out).then(() => toast('คัดลอกแล้ว')).catch(() => toast('กดค้างที่ข้อความเพื่อคัดลอก'));
+  } else { toast('กดค้างที่ข้อความเพื่อคัดลอก'); }
+});
+
+if(navigator.share){
+  const sb = document.getElementById('share');
+  sb.style.display = '';
+  sb.addEventListener('click', () => {
+    navigator.share({text: buildReport()}).catch(() => {});
+  });
+}
+
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.opacity = 0, 1800);
+}
+
+render();
+document.getElementById('date').textContent = thaiDate();
+</script>
